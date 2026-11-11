@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2D Cellular Automata and the Edge of Chaos</title>
+<style>
+   body {
+       background-color: gray;
+       margin: 3px;
+       padding: 0px;
+   }
+   a:link { color: #CCCCFF; }
+   a:visited { color: #DDDDDD; }
+   a:active { color: #FFCCCC; }
+   #mainheadholder {
+       color: white;
+       font-weight: bold;
+       margin: 0px;
+       padding-bottom: 4px;
+   }
+   #mainhead { font-size: 150%; white-space: pre; }
+   #mainheadholder > p { margin: 0px; padding: 0px; }
+   #link { white-space: pre; }
+   #menuicon {
+       color: white; background: #555;
+       border: 1px solid #999; border-radius: 3px;
+       font-size: 16px; padding: 2px 8px; cursor: pointer;
+       display: none;
+   }
+   #mask {
+       position: fixed; left: 0; top: 0; width: 100%; height: 100%;
+       background-color: #CCCCCC; opacity: 0.7; z-index: 3;
+   }
+   #ccUI {
+       display: none; position: absolute; top: 10px; left: 10px;
+       background-color: white; padding: 10px; border: 2px solid black;
+       opacity: 1; z-index: 10; max-width: calc(100% - 40px);
+   }
+   #ccUI p { text-align: center; margin-top: 15px; }
+   #ccsliders { background-color: lightgray; border: 1px solid black; }
+   #ccpalette div {
+       display: inline-block; margin: 3px; border: 2px solid black;
+       width: 45px; padding-top: 5px; height: 30px; text-align: center;
+   }
+   #board {
+       position: fixed; right: 3px; bottom: 3px; top: 52px;
+       left: 262px;
+       background-color: white; padding: 0; border: 2px solid gray;
+       overflow: hidden; z-index: 1;
+   }
+   #canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+   #canvas-holder {
+       border-top: 2px solid gray;
+       position: absolute; bottom: 0; right: 0; left: 0;
+       top: 64px;
+   }
+   #slider-canvas { display: inline; }
+   #info { color: #880000; text-align: center; margin-top: 2px; }
+   #seedline { color: #666; text-align: center; font-size: 12px; }
+   #board-top { background: white; }
+   button, label { white-space: pre; }
+   #controls {
+       position: fixed; left: 3px; top: 46px; bottom: 3px; width: 250px;
+       background-color: white;
+       border-left: 2px solid black; border-right: 2px solid black;
+       border-top: 2px solid black;
+       padding: 0; overflow: auto; z-index: 5;
+   }
+   .indent { margin-left: 25px; }
+   div.group { padding: 8px; border-bottom: 2px solid black; }
+   div.group p { margin-top: 8px; margin-bottom: 0; }
+   div.group .hint { font-size: 11px; color: #555; margin-top: 4px; }
+   input[type="text"] { max-width: 210px; }
+</style>
+</head>
+<body>
+
+<noscript><b>Sorry, this page requires JavaScript.</b></noscript>
+
+<div id="mainheadholder">
+<table><tbody><tr><td><button id="menuicon" style="display: none;">&#9776;</button></td>
+<td><span id="mainhead">2D Cellular Automata and the Edge of Chaos</span><br>
+   <span id="link">(<a href="https://math.hws.edu/eck/js/edge-of-chaos/CA.html" target="_blank">David Eck's original 1D app</a> &#8212; this is a 2D port of it.)</span></td>
+</tr></tbody></table>
+</div>
+
+<div id="controls">
+
+<div class="group">
+<p>
+   <button id="run" disabled>Run</button>
+   <button id="pause">Pause</button>
+   <button id="step" title="Compute and display just the next generation of the cellular automaton." disabled>Step</button><br>
+   <button id="runToScreen" title="Run the example, but pause after 1000 more generations have been computed.">Run 1000 Gens</button><br>
+   <button id="restart">Restart Current World</button><br>
+   Run Speed: <select id="speed">
+       <option value="1">Fastest</option>
+       <option value="3">Faster</option>
+       <option value="6">Fast</option>
+       <option value="15">Moderate</option>
+       <option value="30">Slow</option>
+       <option value="60">Very Slow</option>
+   </select>
+</p>
+</div>
+
+<div class="group">
+<p><button id="newworld" title="Create and install a new initial world (a starting grid).  This does not change the rule set.">Create New World Using:</button><br>
+       <label class="indent">Fill: <select id="worldtype">
+          <option value="1">All Cells, all live</option>
+          <option value="2">All Cells, symmetric</option>
+          <option value="3">All Cells, 50% dead</option>
+          <option value="4">All Cells, 75% dead</option>
+          <option value="5">Clump</option>
+          <option value="6">Symmetric Clump</option>
+          <option value="7">Clumps</option>
+          <option value="8">One Dot</option>
+          <option value="9">Dots</option>
+       </select></label><br>
+       <label class="indent">Cell Size: <select id="cellsize">
+           <option value="1">1</option>
+           <option value="2">2</option>
+           <option value="3">3</option>
+           <option value="4">4</option>
+           <option value="5">5</option>
+           <option value="7">7</option>
+           <option value="10">10</option>
+           <option value="20">20</option>
+       </select></label>
+</p>
+</div>
+
+<div class="group">
+<p><button id="colors" title="Show a dialog box where you can change the colors that are used to show cell states.">Edit Colors</button><br>
+   <label class="indent">Paint Brush: <select id="brush"></select></label>
+   <label class="indent"><input id="trail" type="checkbox" style="margin-left:25px">Fading trail</label>
+   <div class="hint">Click or drag on the board to paint with the brush; right-drag erases.</div>
+</p>
+</div>
+
+<div class="group">
+<p><button id="new" title="Replace the current example with a newly created one, using the settings below, with about 1/3 of the rule classes active.">Create New Rule Set Using:</button><br>
+       <label class="indent">Number of States:<select id="states"></select></label><br>
+       <label class="indent">Neighborhood:<select id="shape">
+           <option value="vn1">vN r1 cross (5 cells)</option>
+           <option value="vn2">vN r2 diamond (13 cells)</option>
+           <option value="vn3">vN r3 diamond (25 cells)</option>
+           <option value="m1">Moore 3x3 (9 cells)</option>
+           <option value="m2">Moore 5x5 (25 cells)</option>
+       </select></label><br>
+       <label class="indent">Symmetry:<select id="mode">
+           <option value="d4">D4 (8-fold square)</option>
+           <option value="asym">Asymmetric (raw table)</option>
+           <option value="permute">Permute (by counts)</option>
+       </select></label>
+       <div class="hint">Permute: law depends on the center state plus the counts of neighbor states, location erased. Giant rule tables take a few seconds to build.</div>
+</p>
+</div>
+
+<div class="group" id="filebuttons">
+   <p><button id="savebtn" title="Save to local file. This saves a small file that contains the data needed to reconstruct the current example in this web app.">Save to File</button>
+      <button id="loadbtn" title="Load example from a local file that was created using the 'Save to File' button.">Load from File</button>
+   </p>
+</div>
+
+<div class="group" id="localstorage">
+<p><button id="save" title="Saves data for the current example even after you leave this page; it will appear in the menus below.">Save Example in Browser</button><br>
+       <label class="indent">Name: <input type="text" id="savename" maxlength="15" size="15" title="A saved example will appear in the menus below using this name."></label>
+</p>
+<p><button id="load" title="Restore an example that was previously saved in your browser and start running it.">Load Example:</button><br>
+       <select id="loadname" class="indent" disabled><option>(None Available)</option></select>
+</p>
+<p><button id="delete" title="Delete a previously saved example from your browser.">Delete Example:</button><br>
+       <select id="deletename" class="indent" disabled><option>(None Available)</option></select>
+</p>
+<p><button id="undodelete" disabled>Undo Delete</button>
+   <button id="deleteall">Delete All!</button>
+</p>
+</div>
+
+</div>
+
+<div id="board">
+   <div id="board-top">
+      <div id="info">&nbsp;</div>
+      <div id="seedline">rule seed &#8212; &#183; world seed &#8212;</div>
+      <table style="margin: 3px;"><tbody><tr>
+         <td><div id="rulect" style="display:inline-block; white-space: pre">Rules In Use:<br>&nbsp;&nbsp;<input type="text" id="rulesused" maxlength="7" size="7"></div></td>
+         <td><div id="slidercanvasholder" style="display:inline-block;">
+            <canvas id="slider-canvas" height="40" width="600" align="center" style="width: 600px;"></canvas></div></td>
+      </tr></tbody></table>
+   </div>
+   <div id="canvas-holder">
+      <canvas id="canvas" width="800" height="500"></canvas>
+   </div>
+</div>
+
+<div id="ccUI">
+<p>
+   <button onclick="installStandardPalette(1)">Black / Default</button>
+   <button onclick="installStandardPalette(3)">Black / Spectrum</button>
+   <button onclick="installStandardPalette(5)">Grayscale</button>
+</p>
+<p>
+   <button onclick="installStandardPalette(2)">White / Default</button>
+   <button onclick="installStandardPalette(4)">White / Spectrum</button>
+   <button onclick="installStandardPalette(6)">Reverse Grayscale</button>
+</p>
+<p id="ccpalette">
+</p>
+<p>Editing Color for State Number <span id="ccnum"></span></p>
+<p><canvas id="ccsliders" width="400" height="170"></canvas></p>
+<p>
+    <button onclick="acceptNewPalette()">OK (Return)</button>
+    <button onclick="cancelNewPalette()">Cancel (ESC)</button>
+</p>
+<p>Click a color to edit it.<br>Click "OK" or "Cancel" to finish.</p>
+</div>
+<div id="mask" style="display:none">
+</div>
+
+<script src="lib/seedrandom.js"></script>
+<script src="lib/slider-canvas-for-CA.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
